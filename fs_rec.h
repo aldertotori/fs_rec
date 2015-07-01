@@ -76,6 +76,10 @@ NTSTATUS FsRecCreateAndRegisterDO(PDRIVER_OBJECT	DriverObject,
 								  ULONG				DeviceType,
 								  BOOLEAN			bLowPrority);  // LOW_PRIORITY
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//
+//
 BOOLEAN FsRecReadBlock(PDEVICE_OBJECT DeviceObject,
 					   PLARGE_INTEGER StartingOffset,
 					   ULONG LengthToRead,
@@ -115,33 +119,6 @@ typedef struct _MBR_SECTOR
 	PARTITION_ENTRY			Entry[4];		// 446
 	USHORT					Signature;		//结束标志2 Byte 55 AA
 } MBR_SECTOR,*PMBR_SECTOR;
-
-typedef struct _FAT32_Init_Arg 
-{
-	unsigned char BPB_Sector_No;	// BPB所在扇区号		0
-	
-	unsigned long Total_Size;		// 磁盘的总容量			5
-	
-	unsigned long FirstDirClust;	// 根目录的开始簇		9
-	
-	unsigned long FirstDataSector;	//						13
-	
-	unsigned int  BytesPerSector;	//文件数据开始扇区号 //每个扇区的字节数	17
-	
-	unsigned int  FATsectors;		//FAT表所占扇区数		21		
-	
-	unsigned int  SectorsPerClust;	//每簇的扇区数			25
-	
-	unsigned long FirstFATSector;	//						29
-	
-	unsigned long FirstDirSector;	//						33
-	
-	unsigned long RootDirSectors;	//						37
-	
-	unsigned long RootDirCount;		//						41
-	
-} FAT32_Init_Arg,*PFAT32_Init_Arg; // 第一个FAT表所在扇区 // 第一个目录所在扇区 // 根目录所占扇区数 // 根目录下的目录与文件
-
 
 #pragma pack(pop)
 
@@ -213,27 +190,9 @@ typedef NTSTATUS (NTAPI *PFN_ZwLoadDriver)(PUNICODE_STRING DriverRegistryPath);
 
 #if _MSC_VER <= 1200
 
-#if (NTDDI_VERSION >= NTDDI_WINXP)
-NTKERNELAPI
-NTSTATUS
-IoReadDiskSignature(
-					IN  PDEVICE_OBJECT DeviceObject,
-					IN  ULONG BytesPerSector,
-					OUT PDISK_SIGNATURE Signature
-					);
-#endif
-
 #define ExFreePoolWithTag(x,s)	ExFreePool(x)
 
 #else
-
-NTKERNELAPI
-NTSTATUS
-IoReadDiskSignature(
-					IN  PDEVICE_OBJECT DeviceObject,
-					IN  ULONG BytesPerSector,
-					OUT PDISK_SIGNATURE Signature
-					);
 
 NTKERNELAPI
 VOID

@@ -35,8 +35,8 @@ typedef struct _DBR_NTFS
 	LARGE_INTEGER	BS_SectorTotal;		//  28 - 2F, 扇区总数，即分区大小
 	LARGE_INTEGER	BS_MFTStartOffset;	//  30 - 37, $MFT 开始簇号
 	LARGE_INTEGER	BS_MFTmirrOffset;	//  38 - 3F, $MFTmirr 开始簇号
-	ULONG			BS_ClusPerMFT;		//  40 - 43, 每个MFT的簇数
-	ULONG			BS_ClusPerIndex;	//  44 - 47, 每Index的簇数
+	unsigned __int8	BS_ClusPerMFT[4];		//  40 - 43, 每个MFT的簇数
+	unsigned __int8	BS_ClusPerIndex[4];	//  44 - 47, 每Index的簇数
 	UCHAR			BS_SerialNumber[8]; //  48 - 4F, 分区逻辑序列号
 
 } DBR_NTFS,*PDBR_NTFS;
@@ -47,57 +47,105 @@ typedef struct _DBR_NTFS
 BOOLEAN IsNtfsVolume(PUCHAR SectorData,ULONG BytesPerSector,PLARGE_INTEGER SectorCount)
 {
 	PDBR_NTFS Dbr;
+	LARGE_INTEGER	Temp;
 
 	PAGED_CODE();
 
 	Dbr = (PDBR_NTFS)SectorData;
 
-	if( Dbr->BS_OEMName[0] == 'N'  &&
-		Dbr->BS_OEMName[1] == 'T'  &&
-		Dbr->BS_OEMName[2] == 'F'  &&
-		Dbr->BS_OEMName[3] == ' '  &&
-		Dbr->BS_OEMName[4] == ' '  &&
-		Dbr->BS_OEMName[5] == ' '  &&
-		Dbr->BS_OEMName[6] == ' '  &&
-		Dbr->BS_OEMName[7] == ' '  &&
-		Dbr->BS_BytesPerSector[0] != 0		&&
-		Dbr->BS_BytesPerSector[1] <= 0x10	&&
-		(Dbr->BS_SecPerClus == 1  ||
-		 Dbr->BS_SecPerClus == 2  ||
-		 Dbr->BS_SecPerClus == 4  ||
-		 Dbr->BS_SecPerClus == 8  ||
-		 Dbr->BS_SecPerClus == 0x10 ||
-		 Dbr->BS_SecPerClus == 0x20 ||
-		 Dbr->BS_SecPerClus == 0x40 ||
-		 Dbr->BS_SecPerClus == 0x80 ) &&
-		 Dbr->BS_Reserved[0] == 0 &&
-		 Dbr->BS_Reserved[1] == 0 &&
-		 Dbr->BS_Reserved[2] == 0 &&
-		 Dbr->BS_Reserved[3] == 0 &&
-		 Dbr->BS_Reserved[4] == 0 &&
-		 Dbr->BS_Reserved[5] == 0 &&
-		 Dbr->BS_Reserved[6] == 0 &&
-		 Dbr->BS_Reserved[7] == 0 &&
-		 Dbr->BS_Reserved[8] == 0 &&
-		 Dbr->BS_Reserved[9] == 0 &&
-		 Dbr->BS_Reserved[10] == 0 &&
-		 Dbr->BS_Reserved[11] == 0 &&
-		 Dbr->BS_Reserved[12] == 0 &&
-		 Dbr->BS_Reserved[13] == 0 &&
-		 Dbr->BS_Reserved[14] == 0 &&
-		 Dbr->BS_Reserved[15] == 0 &&
-		 Dbr->BS_Reserved[16] == 0 &&
-		 Dbr->BS_Reserved[17] == 0 &&
-		 Dbr->BS_Reserved[18] == 0 &&
-		 Dbr->BS_Reserved[19] == 0 &&
-		 Dbr->BS_Reserved[20] == 0 &&
-		 Dbr->BS_Reserved[21] == 0 &&
-		 )
+	if( Dbr->BS_OEMName[0] == 'N'  && Dbr->BS_OEMName[1] == 'T'  && Dbr->BS_OEMName[2] == 'F'  && Dbr->BS_OEMName[3] == 'S'  &&
+		Dbr->BS_OEMName[4] == ' '  && Dbr->BS_OEMName[5] == ' '  &&	Dbr->BS_OEMName[6] == ' '  && Dbr->BS_OEMName[7] == ' '  &&
+		Dbr->BS_BytesPerSector[0] != 0	&&	Dbr->BS_BytesPerSector[1] <= 0x10	&&
+		(Dbr->BS_SecPerClus == 1  || Dbr->BS_SecPerClus == 2  || Dbr->BS_SecPerClus == 4  || Dbr->BS_SecPerClus == 8  ||
+		 Dbr->BS_SecPerClus == 0x10 || Dbr->BS_SecPerClus == 0x20 || Dbr->BS_SecPerClus == 0x40 || Dbr->BS_SecPerClus == 0x80 ) &&
+		 Dbr->BS_Reserved[0] == 0 && Dbr->BS_Reserved[1] == 0 && Dbr->BS_Reserved[2] == 0 &&
+		 Dbr->BS_Reserved[3] == 0 && Dbr->BS_Reserved[4] == 0 && Dbr->BS_Reserved[5] == 0 &&
+		 Dbr->BS_Reserved[6] == 0 && Dbr->BS_Reserved[7] == 0 && Dbr->BS_Reserved[8] == 0 &&
+		 Dbr->BS_Reserved[9] == 0 && Dbr->BS_Reserved[10] == 0 && Dbr->BS_Reserved[11] == 0 &&
+		 Dbr->BS_Reserved[12] == 0 && Dbr->BS_Reserved[13] == 0 && Dbr->BS_Reserved[14] == 0 &&
+		 Dbr->BS_Reserved[15] == 0 && Dbr->BS_Reserved[16] == 0 && Dbr->BS_Reserved[17] == 0 &&
+		 Dbr->BS_Reserved[18] == 0 && Dbr->BS_Reserved[19] == 0 && Dbr->BS_Reserved[20] == 0 && Dbr->BS_Reserved[21] == 0 )
 	{
+		do 
+		{
 
+			if( Dbr->BS_SectorTotal.u.HighPart > SectorCount->u.HighPart)
+			{
+				break;
+			}
 
+			if( Dbr->BS_SectorTotal.u.HighPart == SectorCount->u.HighPart &&
+				Dbr->BS_SectorTotal.u.LowPart > SectorCount->u.LowPart )
+			{
+				break;
+			}
+				
+				// Dbr->BS_SecPerClus ? cdq , 扩展 64 字节
+			Temp.QuadPart = Dbr->BS_MFTStartOffset.QuadPart / (unsigned __int8)Dbr->BS_SecPerClus;
+			if(Temp.u.HighPart > SectorCount->u.HighPart)
+			{
+				break;
+			}
+			
+			if( Temp.u.HighPart == SectorCount->u.HighPart &&
+				Temp.u.LowPart > SectorCount->u.LowPart )
+			{
+				break;
+			}
 
-		return TRUE;
+			Temp.QuadPart = Dbr->BS_MFTmirrOffset.QuadPart / (unsigned __int8)Dbr->BS_SecPerClus;
+			if(Temp.u.HighPart > SectorCount->u.HighPart)
+			{
+				break;
+			}
+
+			if( Temp.u.HighPart == SectorCount->u.HighPart &&
+				Temp.u.LowPart > SectorCount->u.LowPart )
+			{
+				break;
+			}
+
+			if(Dbr->BS_ClusPerMFT[0] < 0xE1)
+			{
+				if( Dbr->BS_ClusPerMFT[0] != 1 &&
+					Dbr->BS_ClusPerMFT[0] != 2 &&
+					Dbr->BS_ClusPerMFT[0] != 4 &&
+					Dbr->BS_ClusPerMFT[0] != 8 &&
+					Dbr->BS_ClusPerMFT[0] != 10 &&
+					Dbr->BS_ClusPerMFT[0] != 20 &&
+					Dbr->BS_ClusPerMFT[0] != 40 )
+				{
+					break;
+				}
+			}
+
+			if(Dbr->BS_ClusPerMFT[0] > 0xF7)
+			{
+				break;
+			}
+
+			if(Dbr->BS_ClusPerIndex[0] < 0xE1)
+			{
+				if( Dbr->BS_ClusPerIndex[0] != 1 &&
+					Dbr->BS_ClusPerIndex[0] != 2 &&
+					Dbr->BS_ClusPerIndex[0] != 4 &&
+					Dbr->BS_ClusPerIndex[0] != 8 &&
+					Dbr->BS_ClusPerIndex[0] != 10 &&
+					Dbr->BS_ClusPerIndex[0] != 20 &&
+					Dbr->BS_ClusPerIndex[0] != 40 )
+				{
+					break;
+				}
+			}
+			
+			if(Dbr->BS_ClusPerIndex[0] > 0xF7)
+			{
+				break;
+			}
+
+			return TRUE;
+
+		} while (FALSE);
 	}
 	return FALSE;
 }
