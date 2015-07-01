@@ -29,7 +29,7 @@ typedef enum
 // 0xC
 typedef struct _DEVICE_EXTENSION
 {
-	PDEVICE_OBJECT		ParentDevice;		// 0
+	PDEVICE_OBJECT		Device;				// 0
 	FILE_SYSTEM_TYPE	FileSystemType;		// 4
 	DRIVER_LOAD_STATUS	LoadStatus;			// 8
 } DEVICE_EXTENSION,*PDEVICE_EXTENSION;

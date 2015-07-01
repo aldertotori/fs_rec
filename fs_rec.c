@@ -195,11 +195,11 @@ NTSTATUS FsRecCreateAndRegisterDO(PDRIVER_OBJECT	DriverObject,
 
 			if(ParentDev)
 			{
-				DevExt->ParentDevice = ((PDEVICE_EXTENSION)ParentDev->DeviceExtension)->ParentDevice;
+				DevExt->Device = ((PDEVICE_EXTENSION)ParentDev->DeviceExtension)->Device;
 				DevExt = (PDEVICE_EXTENSION)ParentDev->DeviceExtension;
 			}
 
-			DevExt->ParentDevice = DeviceObject;
+			DevExt->Device = DeviceObject;
 
 			if(CreatedDev)
 				CreatedDev[0] = DeviceObject;
@@ -499,7 +499,7 @@ NTSTATUS FsRecLoadFileSystem(PDEVICE_OBJECT DeviceObject,LPWSTR DriverRegistryPa
 			while ( DevExt->LoadStatus != DRIVER_LOADING )
 			{
 				Ext->LoadStatus = DRIVER_LOADING;
-				Ext = (PDEVICE_EXTENSION)Ext->ParentDevice->DeviceExtension;
+				Ext = (PDEVICE_EXTENSION)Ext->Device->DeviceExtension;
 			}
 		}
 		
@@ -507,8 +507,9 @@ NTSTATUS FsRecLoadFileSystem(PDEVICE_OBJECT DeviceObject,LPWSTR DriverRegistryPa
 		while ( Ext->LoadStatus != DRIVER_LOADED )
 		{
 			pfn_IoUnregisterFileSystem(DeviceObject);
+			DeviceObject = DevExt->Device;
 			DevExt->LoadStatus = DRIVER_LOADED;
-			Ext = (PDEVICE_EXTENSION)Ext->ParentDevice->DeviceExtension;
+			Ext = (PDEVICE_EXTENSION)DeviceObject->DeviceExtension;
 		}
 
 		KeSetEvent(FsRecLoadSync,0,FALSE);
