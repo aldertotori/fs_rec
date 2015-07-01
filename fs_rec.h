@@ -53,6 +53,12 @@ BOOLEAN IsNtfsVolume(PUCHAR SectorData,ULONG BytesPerSector,PLARGE_INTEGER Secto
 //
 //
 NTSTATUS UdfsRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp);
+BOOLEAN IsUdfsVolume(PDEVICE_OBJECT DeviceObject, ULONG SectorSize);
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//
+//
 NTSTATUS CdfsRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +66,7 @@ NTSTATUS CdfsRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp);
 //
 //
 NTSTATUS FatRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp);
+BOOLEAN IsFatVolume(PUCHAR BlockData);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //

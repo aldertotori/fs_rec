@@ -13,7 +13,7 @@
 
 #pragma pack(push,1)
 
-typedef struct _FAT32_DBR
+typedef struct _EXFAT_DBR
 {
 	unsigned char BS_jmpBoot[3];		//Ìø×ªÖ¸Áî offset: 0
 
@@ -89,24 +89,23 @@ typedef struct _FAT32_DBR
 
 	unsigned short BS_EndSign;			// 510
 
-} FAT32_DBR,*PFAT32_DBR;
+} EXFAT_DBR,*PEXFAT_DBR;
 
 
 #pragma pack(pop)
 
 #define	ExFatOemName     "EXFAT   "
-#define	Fat32VolumeName  "FAT32   "
 #define END_SIGN		 0xAA55
 
 BOOLEAN IsExFatVolume(PUCHAR SectorData)
 {
-	BOOLEAN	bExFatVolume;
-	UCHAR	Empty[53];
-	PFAT32_DBR Dbr;
+	BOOLEAN		bExFatVolume;
+	UCHAR		Empty[53];
+	PEXFAT_DBR	Dbr;
 
 	PAGED_CODE();
 
-	Dbr = (PFAT32_DBR)SectorData;
+	Dbr = (PEXFAT_DBR)SectorData;
 
 	bExFatVolume = FALSE;
 	memset(Empty,0,53);
@@ -168,7 +167,9 @@ NTSTATUS ExFatRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp)
 				if ( IsExFatVolume(BlockData) )
 					Status = STATUS_FS_DRIVER_REQUIRED;
 			}
-			if(BlockData) ExFreePoolWithTag(BlockData,0);
+
+			if(BlockData) 
+				ExFreePoolWithTag(BlockData,0);
 		}
 		else
 		{

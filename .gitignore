@@ -4,6 +4,11 @@
 *.o
 *.obj
 *.pdb
+*.opt
+*.plg
+*.ncb
+*.sbr
+
 
 # Precompiled Headers
 *.gch
@@ -13,6 +18,7 @@
 *.so
 *.dylib
 *.dll
+*.sys
 
 # Fortran module files
 *.mod

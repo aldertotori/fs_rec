@@ -252,11 +252,7 @@ VOID FsRecUnload(PDRIVER_OBJECT DriverObject)
 {
 	PAGED_CODE();
 
-	if(FsRecLoadSync)
-	{
-		ExFreePoolWithTag(FsRecLoadSync,0);
-		FsRecLoadSync = NULL;
-	}
+	ExFreePoolWithTag(FsRecLoadSync,0);
 }
 
 NTSTATUS FsRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp)
@@ -291,6 +287,10 @@ NTSTATUS FsRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp)
 
 		case NTFS_TYPE:
 			Status = NtfsRecFsControl(DeviceObject,Irp);
+			break;
+
+		case UDFS_TYPE:
+			Status = UdfsRecFsControl(DeviceObject,Irp);
 			break;
 
 		case EXFAT_TYPE:
