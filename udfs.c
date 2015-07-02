@@ -51,6 +51,6 @@ NTSTATUS UdfsRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp)
 	
 	Irp->IoStatus.Status = Status;
 	IoCompleteRequest(Irp,0);
-	return	Status;
+	return Status;
 }
 

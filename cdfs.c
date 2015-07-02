@@ -31,7 +31,7 @@ NTSTATUS CdfsRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp)
 	}
 
 	Irp->IoStatus.Status = Status;
-	IofCompleteRequest(Irp, 0);
-	return	Status;
+	IoCompleteRequest(Irp,0);
+	return Status;
 }
 

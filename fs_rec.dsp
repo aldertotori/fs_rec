@@ -119,6 +119,10 @@ SOURCE=.\fs_rec.c
 
 SOURCE=.\ntfs.c
 # End Source File
+# Begin Source File
+
+SOURCE=.\udfs.c
+# End Source File
 # End Group
 # Begin Group "Header Files"
 

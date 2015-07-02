@@ -13,142 +13,212 @@
 
 #pragma pack(push,1)
 
-typedef struct _DBR_NTFS
+typedef struct _BIOS_PARAMETER_BLOCK 
 {
-	UCHAR	BS_jmpBoot[3];		//	0 跳转指令 offset: 0
-	UCHAR	BS_OEMName[8];		//	3 offset: 3
-	UCHAR	BS_BytesPerSector[2];	//	B 一般为 00 02 / 512 < 00 10 / 4096 
-	UCHAR	BS_SecPerClus;		//	D 每簇扇区数 offset:13
-	UCHAR	BS_Reserved[22];	//  E - 0x23
-	/*
-	USHORT	BS_ReserveClus;		//  E - F
-	UCHAR	BS_Zero[3];			//  10
-	UCHAR	BS_Unused;			//  13
-	USHORT	BS_MediaType;		//  14 - 15 , 硬盘 F8
-	USHORT	BS_Unk;				//  16 - 17, 总为 0
-	USHORT	BS_SectorPerHead;	//  18 - 19, 每磁头扇区数
-	USHORT	BS_HeadPerTrack;	//  1A - 1B, 每柱面磁头数
-	ULONG	BS_OffsetSectors;	//  1C - 1F, 从 MBR - DBR 的扇区总数
-	ULONG	BS_NotUsed;			//  20 - 23
-	*/
-	ULONG			BS_Sign;					//  24 - 27, 总为 80 00 80 00
-	LARGE_INTEGER	BS_SectorTotal;		//  28 - 2F, 扇区总数，即分区大小
-	LARGE_INTEGER	BS_MFTStartOffset;	//  30 - 37, $MFT 开始簇号
-	LARGE_INTEGER	BS_MFTmirrOffset;	//  38 - 3F, $MFTmirr 开始簇号
-	unsigned __int8	BS_ClusPerMFT[4];		//  40 - 43, 每个MFT的簇数
-	unsigned __int8	BS_ClusPerIndex[4];	//  44 - 47, 每Index的簇数
-	UCHAR			BS_SerialNumber[8]; //  48 - 4F, 分区逻辑序列号
+	UCHAR  BytesPerSector[2];                       // offset = 0x000  0
+	UCHAR  SectorsPerCluster[1];                    // offset = 0x002  2
+	UCHAR  ReservedSectors[2];                      // offset = 0x003  3
+	UCHAR  Fats[1];                                 // offset = 0x005  5
+	UCHAR  RootEntries[2];                          // offset = 0x006  6
+	UCHAR  Sectors[2];                              // offset = 0x008  8
+	UCHAR  Media[1];                                // offset = 0x00A 10
+	UCHAR  SectorsPerFat[2];                        // offset = 0x00B 11
+	UCHAR  SectorsPerTrack[2];                      // offset = 0x00D 13
+	UCHAR  Heads[2];                                // offset = 0x00F 15
+	UCHAR  HiddenSectors[4];                        // offset = 0x011 17
+	UCHAR  LargeSectors[4];                         // offset = 0x015 21
+} BIOS_PARAMETER_BLOCK;								// sizeof = 0x019 25
 
-} DBR_NTFS,*PDBR_NTFS;
+typedef struct _PACKED_BOOT_SECTOR
+{
+	UCHAR					Jump[3];				//	0 跳转指令 offset: 0
+	UCHAR					Oem[8];					//	3 offset: 3
+	BIOS_PARAMETER_BLOCK	PackedBpb;
+	ULONG					BS_Sign;			//  24 - 27, 总为 80 00 80 00
+	LARGE_INTEGER			NumberSectors;		//  28 - 2F, 扇区总数，即分区大小
+	LARGE_INTEGER			MftStartLcn;		//  30 - 37, $MFT 开始簇号
+	LARGE_INTEGER			Mft2StartLcn;		//  38 - 3F, $MFTmirr 开始簇号
+	LONG					ClustersPerFileRecordSegment;		//  40 - 43, 每个MFT的簇数
+	LONG					DefaultClustersPerIndexAllocationBuffer;	//  44 - 47, 每Index的簇数
+	UCHAR					SerialNumber[8];	//  48 - 4F, 分区逻辑序列号
+
+} PACKED_BOOT_SECTOR,*PPACKED_BOOT_SECTOR;
 
 #pragma pack(pop)
 
 
-BOOLEAN IsNtfsVolume(PUCHAR SectorData,ULONG BytesPerSector,PLARGE_INTEGER SectorCount)
+BOOLEAN
+IsNtfsVolume(
+    IN PUCHAR				BlockData,
+    IN ULONG				BytesPerSector,
+    IN PLARGE_INTEGER		NumberOfSectors
+    )
+
+/*++
+
+Routine Description:
+
+    This routine looks at the buffer passed in which contains the NTFS boot
+    sector and determines whether or not it represents an NTFS volume.
+
+Arguments:
+
+    BootSector - Pointer to buffer containing a potential NTFS boot sector.
+
+    BytesPerSector - Supplies the number of bytes per sector for the drive.
+
+    NumberOfSectors - Supplies the number of sectors on the partition.
+
+Return Value:
+
+    The function returns TRUE if the buffer contains a recognizable NTFS boot
+    sector, otherwise it returns FALSE.
+
+--*/
+
 {
-	PDBR_NTFS Dbr;
-	LARGE_INTEGER	Temp;
+	PPACKED_BOOT_SECTOR	BootSector;
 
-	PAGED_CODE();
+    PAGED_CODE();
 
-	Dbr = (PDBR_NTFS)SectorData;
+	BootSector = (PPACKED_BOOT_SECTOR)BlockData;
 
-	if( Dbr->BS_OEMName[0] == 'N'  && Dbr->BS_OEMName[1] == 'T'  && Dbr->BS_OEMName[2] == 'F'  && Dbr->BS_OEMName[3] == 'S'  &&
-		Dbr->BS_OEMName[4] == ' '  && Dbr->BS_OEMName[5] == ' '  &&	Dbr->BS_OEMName[6] == ' '  && Dbr->BS_OEMName[7] == ' '  &&
-		Dbr->BS_BytesPerSector[0] != 0	&&	Dbr->BS_BytesPerSector[1] <= 0x10	&&
-		(Dbr->BS_SecPerClus == 1  || Dbr->BS_SecPerClus == 2  || Dbr->BS_SecPerClus == 4  || Dbr->BS_SecPerClus == 8  ||
-		 Dbr->BS_SecPerClus == 0x10 || Dbr->BS_SecPerClus == 0x20 || Dbr->BS_SecPerClus == 0x40 || Dbr->BS_SecPerClus == 0x80 ) &&
-		 Dbr->BS_Reserved[0] == 0 && Dbr->BS_Reserved[1] == 0 && Dbr->BS_Reserved[2] == 0 &&
-		 Dbr->BS_Reserved[3] == 0 && Dbr->BS_Reserved[4] == 0 && Dbr->BS_Reserved[5] == 0 &&
-		 Dbr->BS_Reserved[6] == 0 && Dbr->BS_Reserved[7] == 0 && Dbr->BS_Reserved[8] == 0 &&
-		 Dbr->BS_Reserved[9] == 0 && Dbr->BS_Reserved[10] == 0 && Dbr->BS_Reserved[11] == 0 &&
-		 Dbr->BS_Reserved[12] == 0 && Dbr->BS_Reserved[13] == 0 && Dbr->BS_Reserved[14] == 0 &&
-		 Dbr->BS_Reserved[15] == 0 && Dbr->BS_Reserved[16] == 0 && Dbr->BS_Reserved[17] == 0 &&
-		 Dbr->BS_Reserved[18] == 0 && Dbr->BS_Reserved[19] == 0 && Dbr->BS_Reserved[20] == 0 && Dbr->BS_Reserved[21] == 0 )
+    //
+    // Now perform all the checks, starting with the Name and Checksum.
+    // The remaining checks should be obvious, including some fields which
+    // must be 0 and other fields which must be a small power of 2.
+    //
+
+    if (BootSector->Oem[0] == 'N' &&
+        BootSector->Oem[1] == 'T' &&
+        BootSector->Oem[2] == 'F' &&
+        BootSector->Oem[3] == 'S' &&
+        BootSector->Oem[4] == ' ' &&
+        BootSector->Oem[5] == ' ' &&
+        BootSector->Oem[6] == ' ' &&
+        BootSector->Oem[7] == ' '
+		
+		&&
+		
+        //
+        // Check number of bytes per sector.  The low order byte of this
+        // number must be zero (smallest sector size = 0x100) and the
+        // high order byte shifted must equal the bytes per sector gotten
+        // from the device and stored in the Vcb.  And just to be sure,
+        // sector size must be less than page size.
+        //
+		
+        BootSector->PackedBpb.BytesPerSector[0] == 0
+		
+		&&
+		
+        ((ULONG) (BootSector->PackedBpb.BytesPerSector[1] << 8) == BytesPerSector)
+		
+		&&
+		
+        BootSector->PackedBpb.BytesPerSector[1] << 8 <= PAGE_SIZE
+		
+		&&
+		
+        //
+        //  Sectors per cluster must be a power of 2.
+        //
+		
+        (BootSector->PackedBpb.SectorsPerCluster[0] == 0x1 ||
+		BootSector->PackedBpb.SectorsPerCluster[0] == 0x2 ||
+		BootSector->PackedBpb.SectorsPerCluster[0] == 0x4 ||
+		BootSector->PackedBpb.SectorsPerCluster[0] == 0x8 ||
+		BootSector->PackedBpb.SectorsPerCluster[0] == 0x10 ||
+		BootSector->PackedBpb.SectorsPerCluster[0] == 0x20 ||
+		BootSector->PackedBpb.SectorsPerCluster[0] == 0x40 ||
+		BootSector->PackedBpb.SectorsPerCluster[0] == 0x80)
+		
+		&&
+		
+        //
+        //  These fields must all be zero.  For both Fat and HPFS, some of
+        //  these fields must be nonzero.
+        //
+		
+        BootSector->PackedBpb.ReservedSectors[0] == 0 &&
+        BootSector->PackedBpb.ReservedSectors[1] == 0 &&
+        BootSector->PackedBpb.Fats[0] == 0 &&
+        BootSector->PackedBpb.RootEntries[0] == 0 &&
+        BootSector->PackedBpb.RootEntries[1] == 0 &&
+        BootSector->PackedBpb.Sectors[0] == 0 &&
+        BootSector->PackedBpb.Sectors[1] == 0 &&
+        BootSector->PackedBpb.SectorsPerFat[0] == 0 &&
+        BootSector->PackedBpb.SectorsPerFat[1] == 0 &&
+        BootSector->PackedBpb.LargeSectors[0] == 0 &&
+        BootSector->PackedBpb.LargeSectors[1] == 0 &&
+        BootSector->PackedBpb.LargeSectors[2] == 0 &&
+        BootSector->PackedBpb.LargeSectors[3] == 0
+		
+		&&
+		
+        //
+        //  Number of Sectors cannot be greater than the number of sectors
+        //  on the partition.
+        //
+		
+        !( BootSector->NumberSectors.QuadPart > NumberOfSectors->QuadPart )
+		
+		&&
+		
+        //
+        //  Check that both Lcn values are for sectors within the partition.
+        //
+		
+        !( BootSector->MftStartLcn.QuadPart * BootSector->PackedBpb.SectorsPerCluster[0] > NumberOfSectors->QuadPart )
+		
+		&&
+		
+        !( BootSector->Mft2StartLcn.QuadPart * BootSector->PackedBpb.SectorsPerCluster[0] > NumberOfSectors->QuadPart )
+		
+		&&
+		
+        //
+        //  Clusters per file record segment and default clusters for Index
+        //  Allocation Buffers must be a power of 2.  A negative number indicates
+        //  a shift value to get the actual size of the structure.
+        //
+		
+        ((BootSector->ClustersPerFileRecordSegment >= -31 &&
+		BootSector->ClustersPerFileRecordSegment <= -9) ||
+		BootSector->ClustersPerFileRecordSegment == 0x1 ||
+		BootSector->ClustersPerFileRecordSegment == 0x2 ||
+		BootSector->ClustersPerFileRecordSegment == 0x4 ||
+		BootSector->ClustersPerFileRecordSegment == 0x8 ||
+		BootSector->ClustersPerFileRecordSegment == 0x10 ||
+		BootSector->ClustersPerFileRecordSegment == 0x20 ||
+		BootSector->ClustersPerFileRecordSegment == 0x40)
+		
+		&&
+		
+        ((BootSector->DefaultClustersPerIndexAllocationBuffer >= -31 &&
+		BootSector->DefaultClustersPerIndexAllocationBuffer <= -9) ||
+		BootSector->DefaultClustersPerIndexAllocationBuffer == 0x1 ||
+		BootSector->DefaultClustersPerIndexAllocationBuffer == 0x2 ||
+		BootSector->DefaultClustersPerIndexAllocationBuffer == 0x4 ||
+		BootSector->DefaultClustersPerIndexAllocationBuffer == 0x8 ||
+		BootSector->DefaultClustersPerIndexAllocationBuffer == 0x10 ||
+		BootSector->DefaultClustersPerIndexAllocationBuffer == 0x20 ||
+		BootSector->DefaultClustersPerIndexAllocationBuffer == 0x40)) 
 	{
-		do 
-		{
-
-			if( Dbr->BS_SectorTotal.u.HighPart > SectorCount->u.HighPart)
-			{
-				break;
-			}
-
-			if( Dbr->BS_SectorTotal.u.HighPart == SectorCount->u.HighPart &&
-				Dbr->BS_SectorTotal.u.LowPart > SectorCount->u.LowPart )
-			{
-				break;
-			}
-				
-				// Dbr->BS_SecPerClus ? cdq , 扩展 64 字节
-			Temp.QuadPart = Dbr->BS_MFTStartOffset.QuadPart / (unsigned __int8)Dbr->BS_SecPerClus;
-			if(Temp.u.HighPart > SectorCount->u.HighPart)
-			{
-				break;
-			}
 			
-			if( Temp.u.HighPart == SectorCount->u.HighPart &&
-				Temp.u.LowPart > SectorCount->u.LowPart )
-			{
-				break;
-			}
-
-			Temp.QuadPart = Dbr->BS_MFTmirrOffset.QuadPart / (unsigned __int8)Dbr->BS_SecPerClus;
-			if(Temp.u.HighPart > SectorCount->u.HighPart)
-			{
-				break;
-			}
-
-			if( Temp.u.HighPart == SectorCount->u.HighPart &&
-				Temp.u.LowPart > SectorCount->u.LowPart )
-			{
-				break;
-			}
-
-			if(Dbr->BS_ClusPerMFT[0] < 0xE1)
-			{
-				if( Dbr->BS_ClusPerMFT[0] != 1 &&
-					Dbr->BS_ClusPerMFT[0] != 2 &&
-					Dbr->BS_ClusPerMFT[0] != 4 &&
-					Dbr->BS_ClusPerMFT[0] != 8 &&
-					Dbr->BS_ClusPerMFT[0] != 10 &&
-					Dbr->BS_ClusPerMFT[0] != 20 &&
-					Dbr->BS_ClusPerMFT[0] != 40 )
-				{
-					break;
-				}
-			}
-
-			if(Dbr->BS_ClusPerMFT[0] > 0xF7)
-			{
-				break;
-			}
-
-			if(Dbr->BS_ClusPerIndex[0] < 0xE1)
-			{
-				if( Dbr->BS_ClusPerIndex[0] != 1 &&
-					Dbr->BS_ClusPerIndex[0] != 2 &&
-					Dbr->BS_ClusPerIndex[0] != 4 &&
-					Dbr->BS_ClusPerIndex[0] != 8 &&
-					Dbr->BS_ClusPerIndex[0] != 10 &&
-					Dbr->BS_ClusPerIndex[0] != 20 &&
-					Dbr->BS_ClusPerIndex[0] != 40 )
-				{
-					break;
-				}
-			}
+		return TRUE;
 			
-			if(Dbr->BS_ClusPerIndex[0] > 0xF7)
-			{
-				break;
-			}
-
-			return TRUE;
-
-		} while (FALSE);
+	} 
+	else 
+	{
+			
+		//
+		// This does not appear to be an NTFS volume.
+		//
+			
+		return FALSE;
 	}
-	return FALSE;
-}
+} 
 
 NTSTATUS NtfsRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp)
 {
@@ -235,6 +305,6 @@ NTSTATUS NtfsRecFsControl(PDEVICE_OBJECT DeviceObject,PIRP Irp)
 
 	Irp->IoStatus.Status = Status;
 	IoCompleteRequest(Irp,0);
-	return	Status;
+	return Status;
 }
 

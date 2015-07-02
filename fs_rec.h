@@ -210,17 +210,3 @@ ExFreePoolWithTag(
 
 #endif
 
-
-__inline unsigned long lb2bb(unsigned char *dat,unsigned char len)  //小端转为大端
-{
-	unsigned long temp=0;
-	unsigned long fact=1;
-	unsigned char i=0;
-	for(i=0;i<len;i++)
-	{
-		temp+=dat[i]*fact;	
-		fact*=256;
-	}
-	return temp;
-}
-
